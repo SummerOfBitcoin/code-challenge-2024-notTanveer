@@ -1,17 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
 // const secp256k1 = require('secp256k1');
 
 
 let MAX_BLOCK_SIZE = 1000000n; // Maximum block size in bytes
 let INT_MAX = 2147483647n; // Maximum integer value
+const MAX_NONCE = 4294967295 // Maximum nonce value
+const DIFFICULTY_TARGET = Buffer.from("0000ffff00000000000000000000000000000000000000000000000000000000");
 
 const WITNESS_RESERVED_VALUE = Buffer.from(
     '0000000000000000000000000000000000000000000000000000000000000000',
     'hex',
 )
-    
+
 // function isValidSignature(signature, publicKey, message) {
 //     signature = signature.slice(0, -2);
 //     const signatureBuffer = Buffer.from(signature, 'hex');
@@ -20,6 +23,12 @@ const WITNESS_RESERVED_VALUE = Buffer.from(
 
 //     return secp256k1.ecdsaVerify(signatureBuffer, messageBuffer, publicKeyBuffer);
 // }
+
+function hash256(buffer) {
+    return crypto.createHash('sha256').update(
+        crypto.createHash('sha256').update(buffer).digest(),
+    ).digest('hex');
+}
 
 function isValidInput(input) {
     const requiredProperties = ['txid', 'vout', 'prevout', 'sequence'];
@@ -133,11 +142,9 @@ function validateTransaction(tx) {
         return false;
     }
 
-    if (tx.locktime >= 500000000) {
-        console.log(tx.locktime)
-        console.log(tx)
-        throw new Error('Locktime is not in height format')
-    }
+    // if (tx.locktime >= 500000000) {
+    //     throw new Error('Locktime is not in height format')
+    // }
 
     const currentTimestamp = Math.floor(Date.now() / 1000);
     if (tx.locktime > currentTimestamp) {
@@ -148,6 +155,10 @@ function validateTransaction(tx) {
         if (typeof output.value !== 'number' || !output.scriptpubkey || !isStandardScriptPubkey(output.scriptpubkey)) {
             return false;
         }
+    }
+
+    if (tx.vout.scriptpubkey_type === 'v1_p2tr') {
+        return true
     }
 
     if (hasDuplicateInputs(tx)) {
@@ -167,14 +178,14 @@ function validateTransaction(tx) {
         if (!isValidInput(input)) {
             return false;
         }
-    //     if (input.scriptsig.length === 0) {
-    //         if (!isValidSignature(input.witness[0], input.prevout.scriptpubkey, input.prevout.scriptpubkey_asm)) {
-    //             return false;
-    //         }
-    //     }
-    //     else if (!isValidSignature(input.scriptsig, input.prevout.scriptpubkey, input.prevout.scriptpubkey_asm)) {
-    //         return false;
-    //     }
+        //     if (input.scriptsig.length === 0) {
+        //         if (!isValidSignature(input.witness[0], input.prevout.scriptpubkey, input.prevout.scriptpubkey_asm)) {
+        //             return false;
+        //         }
+        //     }
+        //     else if (!isValidSignature(input.scriptsig, input.prevout.scriptpubkey, input.prevout.scriptpubkey_asm)) {
+        //         return false;
+        //     }
     }
 
     const BLOCK_SIZE = calculateTransactionSize(tx)
@@ -228,13 +239,13 @@ function calculateMerkleRoot(coinbaseTxid, txids) {
 }
 
 // Function to generate the block header
-function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, difficultyTarget, nonce) {
+function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce) {
     const header = Buffer.concat([
         Buffer.alloc(4, version, 'little'), // encoded in little endian format
         Buffer.from(prevBlockHash, 'hex').reverse(), // encoded in hexadecimal code in reverse order
         Buffer.from(merkleRoot, 'hex').reverse(),
         Buffer.alloc(4, timestamp, 'little'),
-        Buffer.from(difficultyTarget, 'hex').reverse(),
+        Buffer.from(bits, 'hex').reverse(),
         Buffer.alloc(4, nonce, 'little'),
     ]);
     return header.toString('hex');
@@ -246,6 +257,9 @@ function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, diff
 //     return hash256(witnessRoot + witnessReservedValue)
 // }
 
+let prevBlockHash = "0000000000000000000000000000000000000000000000000000000000000000"; // Assuming this is the genesis block
+
+// let i = 0;
 // Function to process each JSON file and generate block header
 function processTransaction(jsonFile) {
     const transactionData = JSON.parse(fs.readFileSync(jsonFile));
@@ -254,16 +268,24 @@ function processTransaction(jsonFile) {
         const coinbaseTxid = transactionData.vin[0].txid;
         const txids = transactionData.vin.slice(1).map(vin => vin.txid); // Exclude coinbase transaction
         const merkleRoot = calculateMerkleRoot(coinbaseTxid, txids);
-
         // Block header parameters (replace with actual values)
         const version = transactionData.version;
-        const prevBlockHash = "0000000000000000000000000000000000000000000000000000000000000000"; // Assuming this is the genesis block
         const timestamp = Math.floor(Date.now() / 1000);
-        const difficultyTarget = '0000ffff00000000000000000000000000000000000000000000000000000000';
-        const nonce = 0;
+        const bits = '1f00ffff';
+        let nonce = 0;
 
         // Generate block header
-        const blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, difficultyTarget, nonce);
+        let blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
+        let blockHash = hash256(Buffer.from(blockHeader, 'hex'));
+
+        // Calculate nonce 
+        while (BigInt('0x' + blockHash) < BigInt('0x' + DIFFICULTY_TARGET) && nonce < MAX_NONCE) {
+            nonce++;
+            blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
+            blockHash = hash256(Buffer.from(blockHeader, 'hex'));
+        }
+        // console.log(i++);
+        prevBlockHash = blockHash;
         return blockHeader;
     }
 }
