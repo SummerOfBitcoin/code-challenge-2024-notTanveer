@@ -259,13 +259,14 @@ function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits
 
 let prevBlockHash = "0000000000000000000000000000000000000000000000000000000000000000"; // Assuming this is the genesis block
 
-// let i = 0;
+let i = 0;
 // Function to process each JSON file and generate block header
 function processTransaction(jsonFile) {
     const transactionData = JSON.parse(fs.readFileSync(jsonFile));
     // Extract necessary data from the transaction
     if (validateTransaction(transactionData)) {
         const coinbaseTxid = transactionData.vin[0].txid;
+        const allTxids = transactionData.vin.map(vin => vin.txid);
         const txids = transactionData.vin.slice(1).map(vin => vin.txid); // Exclude coinbase transaction
         const merkleRoot = calculateMerkleRoot(coinbaseTxid, txids);
         // Block header parameters (replace with actual values)
@@ -279,14 +280,17 @@ function processTransaction(jsonFile) {
         let blockHash = hash256(Buffer.from(blockHeader, 'hex'));
 
         // Calculate nonce 
-        while (BigInt('0x' + blockHash) < BigInt('0x' + DIFFICULTY_TARGET) && nonce < MAX_NONCE) {
-            nonce++;
-            blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-            blockHash = hash256(Buffer.from(blockHeader, 'hex'));
-        }
+        // while (BigInt('0x' + blockHash) > BigInt('0x' + DIFFICULTY_TARGET) && nonce < MAX_NONCE) {
+        //     nonce++;
+        //     blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
+        //     blockHash = hash256(Buffer.from(blockHeader, 'hex'));
+        //     blockHash = blockHash.match(/.{2}/g).reverse().join('');
+        // }
         // console.log(i++);
         prevBlockHash = blockHash;
-        return blockHeader;
+        return {blockHeader, txids};
+    } else {
+        return {blockHeader: '', txids: []};
     }
 }
 
@@ -299,11 +303,11 @@ function processMempool() {
 
     fs.readdirSync(mempoolFolder).forEach(filename => {
         const jsonFile = path.join(mempoolFolder, filename);
-        const blockHeader = processTransaction(jsonFile);
-        blockHeaders.push(blockHeader);
+        const {blockHeader, txids} = processTransaction(jsonFile);
+        blockHeaders.push({blockHeader, txids});
     });
-
-    fs.writeFileSync(outputFile, blockHeaders.join('\n'));
+    const lines = blockHeaders.map(({blockHeader, txids}) => `${blockHeader} ${txids.join('\n')}`);
+    fs.writeFileSync(outputFile, lines.join('\n'));
     console.log("Block headers generated and saved to output.txt");
 }
 
