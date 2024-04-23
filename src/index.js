@@ -280,13 +280,17 @@ function processTransaction(jsonFile) {
         let blockHash = hash256(Buffer.from(blockHeader, 'hex'));
 
         // Calculate nonce 
-        // while (BigInt('0x' + blockHash) > BigInt('0x' + DIFFICULTY_TARGET) && nonce < MAX_NONCE) {
-        //     nonce++;
-        //     blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-        //     blockHash = hash256(Buffer.from(blockHeader, 'hex'));
-        //     blockHash = blockHash.match(/.{2}/g).reverse().join('');
-        // }
-        // console.log(i++);
+        while (DIFFICULTY_TARGET.compare(Buffer.from(blockHash).reverse()) < 0) {
+            // if (nonce >= MAX_NONCE) {
+            //     console.log("Nonce limit reached");
+            //     break;
+            // }
+            break;
+            // nonce++;
+            // blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
+            // blockHash = hash256(Buffer.from(blockHeader, 'hex'));
+        }
+        console.log(i++);
         prevBlockHash = blockHash;
         return {blockHeader, txids};
     } else {
