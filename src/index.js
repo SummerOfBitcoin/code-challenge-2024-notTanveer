@@ -298,7 +298,7 @@ function processTransaction(jsonFile) {
         //     blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
         //     console.log(nonce);
         //   }
-        console.log(i++);
+        // console.log(i++);
         prevBlockHash = blockHash;
         return { blockHeader, txids };
     } else {
@@ -320,7 +320,7 @@ function processMempool() {
     });
     const lines = blockHeaders.map(({ blockHeader, txids }) => `${blockHeader} ${txids.join('\n')}`);
     fs.writeFileSync(outputFile, lines.join('\n'));
-    console.log("Block headers generated and saved to output.txt");
+    // console.log("Block headers generated and saved to output.txt");
 }
 
 // Call the main function to process mempool transactions
