@@ -2,27 +2,33 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+const EC = require('elliptic').ec;
+const ec = new EC('secp256k1');
+
+function serializeTransaction(transaction) {
+    // This is a simplified example. You need to serialize all relevant parts of the transaction.
+    return Buffer.from(JSON.stringify(transaction), 'utf8');
+}
+
+function verifySignature(transaction, signature, publicKey) {
+    const serializedTransaction = serializeTransaction(transaction);
+    const hash = crypto.createHash('sha256').update(serializedTransaction).digest();
+    const key = ec.keyFromPublic(publicKey, 'hex');
+    return key.verify(hash, signature);
+}
+
 // const secp256k1 = require('secp256k1');
 
 
 let MAX_BLOCK_SIZE = 1000000n; // Maximum block size in bytes
 let INT_MAX = 2147483647n; // Maximum integer value
 const MAX_NONCE = 4294967295 // Maximum nonce value
-const DIFFICULTY_TARGET = Buffer.from("0000ffff00000000000000000000000000000000000000000000000000000000");
+const DIFFICULTY_TARGET = Buffer.from("0000ffff00000000000000000000000000000000000000000000000000000000", 'hex');
 
 const WITNESS_RESERVED_VALUE = Buffer.from(
     '0000000000000000000000000000000000000000000000000000000000000000',
     'hex',
 )
-
-// function isValidSignature(signature, publicKey, message) {
-//     signature = signature.slice(0, -2);
-//     const signatureBuffer = Buffer.from(signature, 'hex');
-//     const publicKeyBuffer = Buffer.from(publicKey, 'hex');
-//     const messageBuffer = crypto.randomBytes(32);
-
-//     return secp256k1.ecdsaVerify(signatureBuffer, messageBuffer, publicKeyBuffer);
-// }
 
 function hash256(buffer) {
     return crypto.createHash('sha256').update(
@@ -240,13 +246,19 @@ function calculateMerkleRoot(coinbaseTxid, txids) {
 
 // Function to generate the block header
 function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce) {
+    const versionLE = Buffer.alloc(4);
+    versionLE.writeInt32LE(version);
+    const timestampLE = Buffer.alloc(4);
+    timestampLE.writeInt32LE(timestamp);
+    const nonceLE = Buffer.alloc(4);
+    nonceLE.writeInt32LE(nonce);
     const header = Buffer.concat([
-        Buffer.alloc(4, version, 'little'), // encoded in little endian format
-        Buffer.from(prevBlockHash, 'hex').reverse(), // encoded in hexadecimal code in reverse order
-        Buffer.from(merkleRoot, 'hex').reverse(),
-        Buffer.alloc(4, timestamp, 'little'),
-        Buffer.from(bits, 'hex').reverse(),
-        Buffer.alloc(4, nonce, 'little'),
+        versionLE,
+        Buffer.alloc(32, prevBlockHash, 'hex').reverse(), // encoded in hexadecimal code in reverse order
+        Buffer.alloc(32, merkleRoot, 'hex').reverse(),
+        timestampLE,
+        Buffer.alloc(4, bits, 'hex').reverse(),
+        nonceLE
     ]);
     return header.toString('hex');
 }
@@ -266,7 +278,6 @@ function processTransaction(jsonFile) {
     // Extract necessary data from the transaction
     if (validateTransaction(transactionData)) {
         const coinbaseTxid = transactionData.vin[0].txid;
-        const allTxids = transactionData.vin.map(vin => vin.txid);
         const txids = transactionData.vin.slice(1).map(vin => vin.txid); // Exclude coinbase transaction
         const merkleRoot = calculateMerkleRoot(coinbaseTxid, txids);
         // Block header parameters (replace with actual values)
@@ -277,24 +288,25 @@ function processTransaction(jsonFile) {
 
         // Generate block header
         let blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-        let blockHash = hash256(Buffer.from(blockHeader, 'hex'));
+        let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
 
         // Calculate nonce 
-        while (DIFFICULTY_TARGET.compare(Buffer.from(blockHash).reverse()) < 0) {
-            // if (nonce >= MAX_NONCE) {
-            //     console.log("Nonce limit reached");
-            //     break;
-            // }
-            break;
-            // nonce++;
-            // blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-            // blockHash = hash256(Buffer.from(blockHeader, 'hex'));
+        while (DIFFICULTY_TARGET.compare(blockHash) < 0) {
+            if (nonce >= MAX_NONCE) {
+                return { blockHeader: '', txids: [] };
+            }
+            // break;
+            // return "";
+            nonce++;
+            blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
+            blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
+            // return { blockHeader: '', txids: [] };  
         }
-        console.log(i++);
+        // console.log(i++);
         prevBlockHash = blockHash;
-        return {blockHeader, txids};
+        return { blockHeader, txids };
     } else {
-        return {blockHeader: '', txids: []};
+        return { blockHeader: '', txids: [] };
     }
 }
 
@@ -307,12 +319,12 @@ function processMempool() {
 
     fs.readdirSync(mempoolFolder).forEach(filename => {
         const jsonFile = path.join(mempoolFolder, filename);
-        const {blockHeader, txids} = processTransaction(jsonFile);
-        blockHeaders.push({blockHeader, txids});
+        const { blockHeader, txids } = processTransaction(jsonFile);
+        blockHeaders.push({ blockHeader, txids });
     });
-    const lines = blockHeaders.map(({blockHeader, txids}) => `${blockHeader} ${txids.join('\n')}`);
+    const lines = blockHeaders.map(({ blockHeader, txids }) => `${blockHeader} ${txids.join('\n')}`);
     fs.writeFileSync(outputFile, lines.join('\n'));
-    console.log("Block headers generated and saved to output.txt");
+    // console.log("Block headers generated and saved to output.txt");
 }
 
 // Call the main function to process mempool transactions
