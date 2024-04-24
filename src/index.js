@@ -2,20 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const EC = require('elliptic').ec;
-const ec = new EC('secp256k1');
+// const EC = require('elliptic').ec;
+// const ec = new EC('secp256k1');
 
-function serializeTransaction(transaction) {
-    // This is a simplified example. You need to serialize all relevant parts of the transaction.
-    return Buffer.from(JSON.stringify(transaction), 'utf8');
-}
+// function serializeTransaction(transaction) {
+//     // This is a simplified example. You need to serialize all relevant parts of the transaction.
+//     return Buffer.from(JSON.stringify(transaction), 'utf8');
+// }
 
-function verifySignature(transaction, signature, publicKey) {
-    const serializedTransaction = serializeTransaction(transaction);
-    const hash = crypto.createHash('sha256').update(serializedTransaction).digest();
-    const key = ec.keyFromPublic(publicKey, 'hex');
-    return key.verify(hash, signature);
-}
+// function verifySignature(transaction, signature, publicKey) {
+//     const serializedTransaction = serializeTransaction(transaction);
+//     const hash = crypto.createHash('sha256').update(serializedTransaction).digest();
+//     const key = ec.keyFromPublic(publicKey, 'hex');
+//     return key.verify(hash, signature);
+// }
 
 // const secp256k1 = require('secp256k1');
 
