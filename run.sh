@@ -1,1 +1,1 @@
-node src/index.js
+npm install && node src/index.js
