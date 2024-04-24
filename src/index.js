@@ -290,15 +290,6 @@ function processTransaction(jsonFile) {
         let blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
         let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
 
-        // Calculate nonce 
-        // while (blockHash.compare(DIFFICULTY_TARGET) < 0) {
-        //     // Increment the nonce before generating the block header
-        //     nonce++; 
-        //     blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-        //     blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
-        //     console.log(nonce);
-        //   }
-        // console.log(i++);
         prevBlockHash = blockHash;
         return { blockHeader, txids };
     } else {
@@ -318,7 +309,7 @@ function processMempool() {
         const { blockHeader, txids } = processTransaction(jsonFile);
         blockHeaders.push({ blockHeader, txids });
     });
-    const lines = blockHeaders.map(({ blockHeader, txids }) => `${blockHeader} ${txids.join('\n')}`);
+    const lines = blockHeaders.map(({ blockHeader, txids }) => `${blockHeader}\n${txids.join('\n')}`);
     fs.writeFileSync(outputFile, lines.join('\n'));
     // console.log("Block headers generated and saved to output.txt");
 }
