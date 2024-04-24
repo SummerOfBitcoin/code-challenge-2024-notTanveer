@@ -291,18 +291,14 @@ function processTransaction(jsonFile) {
         let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
 
         // Calculate nonce 
-        while (DIFFICULTY_TARGET.compare(blockHash) < 0) {
-            if (nonce >= MAX_NONCE) {
-                return { blockHeader: '', txids: [] };
-            }
-            // break;
-            // return "";
-            nonce++;
-            blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-            blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
-            // return { blockHeader: '', txids: [] };  
-        }
-        // console.log(i++);
+        // while (blockHash.compare(DIFFICULTY_TARGET) < 0) {
+        //     // Increment the nonce before generating the block header
+        //     nonce++; 
+        //     blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
+        //     blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
+        //     console.log(nonce);
+        //   }
+        console.log(i++);
         prevBlockHash = blockHash;
         return { blockHeader, txids };
     } else {
@@ -324,7 +320,7 @@ function processMempool() {
     });
     const lines = blockHeaders.map(({ blockHeader, txids }) => `${blockHeader} ${txids.join('\n')}`);
     fs.writeFileSync(outputFile, lines.join('\n'));
-    // console.log("Block headers generated and saved to output.txt");
+    console.log("Block headers generated and saved to output.txt");
 }
 
 // Call the main function to process mempool transactions
