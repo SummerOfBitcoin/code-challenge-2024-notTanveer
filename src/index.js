@@ -15,7 +15,7 @@ const crypto = require('crypto');
 //     const hash = crypto.createHash('sha256').update(serializedTransaction).digest();
 //     const key = ec.keyFromPublic(publicKey, 'hex');
 //     return key.verify(hash, signature);
-// }
+// }\
 
 // const secp256k1 = require('secp256k1');
 
@@ -255,10 +255,10 @@ function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits
     const header = Buffer.concat([
         versionLE,
         Buffer.alloc(32, prevBlockHash, 'hex').reverse(), // encoded in hexadecimal code in reverse order
-        Buffer.alloc(32, merkleRoot, 'hex').reverse(),
-        timestampLE,
+        Buffer.alloc(32, merkleRoot, 'hex'),
+        Buffer.from(timestampLE, 'hex'),
         Buffer.alloc(4, bits, 'hex').reverse(),
-        nonceLE
+        Buffer.from(nonceLE, 'hex')
     ]);
     return header.toString('hex');
 }
@@ -278,8 +278,8 @@ function processTransaction(jsonFile) {
     // Extract necessary data from the transaction
     if (validateTransaction(transactionData)) {
         const coinbaseTxid = transactionData.vin[0].txid;
-        const txids = transactionData.vin.slice(1).map(vin => vin.txid); // Exclude coinbase transaction
-        const merkleRoot = calculateMerkleRoot(coinbaseTxid, txids);
+        const txids = transactionData.vin.map(vin => vin.txid); // Exclude coinbase transaction
+        const merkleRoot = calculateMerkleRoot(coinbaseTxid, txids.slice(1));
         // Block header parameters (replace with actual values)
         const version = transactionData.version;
         const timestamp = Math.floor(Date.now() / 1000);
