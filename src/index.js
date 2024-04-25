@@ -257,7 +257,7 @@ function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits
         Buffer.alloc(32, prevBlockHash, 'hex'), // encoded in hexadecimal code in reverse order
         Buffer.alloc(32, merkleRoot, 'hex'),
         Buffer.from(timestampLE, 'hex'),
-        Buffer.alloc(4, bits, 'hex').reverse(),
+        Buffer.alloc(4, bits, 'hex'),
         Buffer.from(nonceLE, 'hex')
     ]);
     return header.toString('hex');
