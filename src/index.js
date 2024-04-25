@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const {createHash} = require('crypto');
 
 // const EC = require('elliptic').ec;
 // const ec = new EC('secp256k1');
@@ -31,9 +32,9 @@ const WITNESS_RESERVED_VALUE = Buffer.from(
 )
 
 function hash256(buffer) {
-    return crypto.createHash('sha256').update(
-        crypto.createHash('sha256').update(buffer).digest(),
-    ).digest('hex');
+    const h1 = createHash('sha256').update(buffer).digest()
+    const h2 = createHash('sha256').update(h1).digest()
+    return h2
 }
 
 function isValidInput(input) {
@@ -254,10 +255,10 @@ function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits
     nonceLE.writeInt32LE(nonce);
     const header = Buffer.concat([
         versionLE,
-        Buffer.alloc(32, prevBlockHash, 'hex'), // encoded in hexadecimal code in reverse order
+        Buffer.alloc(32, prevBlockHash, 'hex').reverse(), // encoded in hexadecimal code in reverse order
         Buffer.alloc(32, merkleRoot, 'hex'),
         Buffer.from(timestampLE, 'hex'),
-        Buffer.alloc(4, bits, 'hex'),
+        Buffer.alloc(4, bits, 'hex').reverse(),
         Buffer.from(nonceLE, 'hex')
     ]);
     return header.toString('hex');
@@ -288,14 +289,16 @@ function processTransaction(jsonFile) {
 
         // Generate block header
         let blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-        let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse();
+        let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse().toString('hex');
 
-        if (DIFFICULTY_TARGET.compare(blockHash) < 0) {
+        while (DIFFICULTY_TARGET.compare(Buffer.from(blockHash, 'hex')) < 0 && nonce < MAX_NONCE) {
             nonce++;
+            console.log(nonce, '\n');
             blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-            blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse();
+            console.log(blockHeader, '\n');
+            blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse().toString('hex');
+            console.log(blockHash, '\n');
         }
-
         prevBlockHash = blockHash;
         return { blockHeader, txids };
     } else {
