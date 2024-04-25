@@ -254,7 +254,7 @@ function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits
     nonceLE.writeInt32LE(nonce);
     const header = Buffer.concat([
         versionLE,
-        Buffer.alloc(32, prevBlockHash, 'hex').reverse(), // encoded in hexadecimal code in reverse order
+        Buffer.alloc(32, prevBlockHash, 'hex'), // encoded in hexadecimal code in reverse order
         Buffer.alloc(32, merkleRoot, 'hex'),
         Buffer.from(timestampLE, 'hex'),
         Buffer.alloc(4, bits, 'hex').reverse(),
@@ -288,7 +288,13 @@ function processTransaction(jsonFile) {
 
         // Generate block header
         let blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-        let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex')));
+        let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse();
+
+        if (DIFFICULTY_TARGET.compare(blockHash) < 0) {
+            nonce++;
+            blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
+            blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse();
+        }
 
         prevBlockHash = blockHash;
         return { blockHeader, txids };
