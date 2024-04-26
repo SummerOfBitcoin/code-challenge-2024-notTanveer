@@ -293,12 +293,10 @@ function processTransaction(jsonFile) {
 
         while (DIFFICULTY_TARGET.compare(Buffer.from(blockHash, 'hex')) < 0 && nonce < MAX_NONCE) {
             nonce++;
-            console.log(nonce, '\n');
             blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
-            console.log(blockHeader, '\n');
             blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse().toString('hex');
-            console.log(blockHash, '\n');
         }
+        console.log(i++)
         prevBlockHash = blockHash;
         return { blockHeader, txids };
     } else {
