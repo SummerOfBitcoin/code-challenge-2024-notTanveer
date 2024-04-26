@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const {createHash} = require('crypto');
+const { exit } = require('process');
 
 // const EC = require('elliptic').ec;
 // const ec = new EC('secp256k1');
@@ -287,6 +288,10 @@ function processTransaction(jsonFile) {
         const bits = '1f00ffff';
         let nonce = 0;
 
+        if (i >= 500) {
+            return { blockHeader: '', txids: [] };
+        }
+
         // Generate block header
         let blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
         let blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse().toString('hex');
@@ -296,7 +301,7 @@ function processTransaction(jsonFile) {
             blockHeader = generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce);
             blockHash = Buffer.from(hash256(Buffer.from(blockHeader, 'hex'))).reverse().toString('hex');
         }
-        console.log(i++)
+        console.log(i++);
         prevBlockHash = blockHash;
         return { blockHeader, txids };
     } else {
