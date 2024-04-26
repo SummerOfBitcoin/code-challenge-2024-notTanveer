@@ -248,7 +248,8 @@ function calculateMerkleRoot(coinbaseTxid, txids) {
 
 // Function to generate the block header
 function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits, nonce) {
-    const versionLE = "20000000"
+    const versionLE = Buffer.alloc(4);
+    versionLE.writeInt32LE(4);
     const timestampLE = Buffer.alloc(4);
     timestampLE.writeInt32LE(timestamp);
     const nonceLE = Buffer.alloc(4);
