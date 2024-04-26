@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const {createHash} = require('crypto');
+const { createHash } = require('crypto');
 const { exit } = require('process');
 
 // const EC = require('elliptic').ec;
@@ -227,23 +227,29 @@ function validateTransaction(tx) {
 }
 
 // Function to calculate the merkle root
-function calculateMerkleRoot(coinbaseTxid, txids) {
-    let hashes = [Buffer.from(coinbaseTxid, 'hex')];
-    for (const txid of txids) {
-        hashes.push(Buffer.from(txid, 'hex'));
-    }
-    while (hashes.length > 1) {
-        if (hashes.length % 2 !== 0) {
-            hashes.push(hashes[hashes.length - 1]); // Duplicate the last hash if odd number of hashes
+function calculateMerkleRoot(txids) {
+    if (txids.length === 0) return null
+
+    // reverse the txids
+    let level = txids.map((txid) => Buffer.from(txid, 'hex').reverse().toString('hex'))
+
+    while (level.length > 1) {
+        const nextLevel = []
+
+        for (let i = 0; i < level.length; i += 2) {
+            let pairHash
+            if (i + 1 === level.length) {
+                // In case of an odd number of elements, duplicate the last one
+                pairHash = hash256(level[i] + level[i])
+            } else {
+                pairHash = hash256(level[i] + level[i + 1])
+            }
+            nextLevel.push(pairHash)
         }
-        const newHashes = [];
-        for (let i = 0; i < hashes.length; i += 2) {
-            const combinedHash = crypto.createHash('sha256').update(Buffer.concat([hashes[i], hashes[i + 1]])).digest();
-            newHashes.push(combinedHash);
-        }
-        hashes = newHashes;
+        level = nextLevel
     }
-    return hashes[0].toString('hex');
+
+    return level[0]
 }
 
 // Function to generate the block header
@@ -281,7 +287,7 @@ function processTransaction(jsonFile) {
     if (validateTransaction(transactionData)) {
         const coinbaseTxid = transactionData.vin[0].txid;
         const txids = transactionData.vin.map(vin => vin.txid); // Exclude coinbase transaction
-        const merkleRoot = calculateMerkleRoot(coinbaseTxid, txids.slice(1));
+        const merkleRoot = calculateMerkleRoot(txids);
         // Block header parameters (replace with actual values)
         const version = transactionData.version;
         const timestamp = Math.floor(Date.now() / 1000);
