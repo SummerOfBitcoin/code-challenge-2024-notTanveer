@@ -263,7 +263,7 @@ function generateBlockHeader(version, prevBlockHash, merkleRoot, timestamp, bits
     const header = Buffer.concat([
         versionLE,
         Buffer.alloc(32, prevBlockHash, 'hex').reverse(), // encoded in hexadecimal code in reverse order
-        Buffer.alloc(32, merkleRoot, 'hex'),
+        Buffer.alloc(32, merkleRoot, 'hex').reverse(),
         Buffer.from(timestampLE, 'hex'),
         Buffer.alloc(4, bits, 'hex').reverse(),
         Buffer.from(nonceLE, 'hex')
@@ -285,7 +285,7 @@ function processTransaction(jsonFile) {
     const transactionData = JSON.parse(fs.readFileSync(jsonFile));
     // Extract necessary data from the transaction
     if (validateTransaction(transactionData)) {
-        const coinbaseTxid = transactionData.vin[0].txid;
+        // const coinbaseTxid = transactionData.vin[0].txid;
         const txids = transactionData.vin.map(vin => vin.txid); // Exclude coinbase transaction
         const merkleRoot = calculateMerkleRoot(txids);
         // Block header parameters (replace with actual values)
